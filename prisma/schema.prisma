@@ -7,20 +7,339 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
-model User {
-  id       Int      @id @default(autoincrement())
-  name     String
-  email    String   @unique
-  password String
-  posts    Post[]
+enum Role {
+  MEMBER
+  MODERATOR
+  SUPPORT
+  ADMIN
 }
 
-model Post {
+enum ContentType {
+  POST
+  ARTICLE
+  EVENT
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum FieldType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  EMAIL
+  URL
+  SELECT
+  MULTI_SELECT
+  CHECKBOX
+  DATE
+  DATETIME
+  IMAGE
+  RICH_TEXT
+}
+
+enum SpaceAccessMode {
+  PUBLIC
+  MEMBERS
+  RESTRICTED
+}
+
+enum SpaceInvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  password  String
+  role      Role      @default(MEMBER)
+  avatar    String?
+  bio       String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  contents  Content[]
+  comments  Comment[]
+  likes     Like[]
+  conversations ConversationParticipant[]
+  messages      Message[]
+  spaceMemberships SpaceMember[]
+  spaceInvitationsSent SpaceInvitation[] @relation("SpaceInviter")
+}
+
+model Collection {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  description String?
+  order       Int      @default(0)
+  spaces      Space[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Space {
+  id               Int              @id @default(autoincrement())
+  name             String
+  slug             String           @unique
+  description      String?
+  icon             String?
+  color            String?
+  isPrivate        Boolean          @default(false)
+  accessMode       SpaceAccessMode  @default(PUBLIC)
+  allowMemberPosts Boolean          @default(true)
+  order            Int              @default(0)
+  collectionId     Int?
+  collection       Collection?      @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  contents         Content[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  forms            FormDefinition[]
+  members          SpaceMember[]
+  invitations      SpaceInvitation[]
+  banners          Banner[]
+  slugRedirects    SpaceSlugRedirect[]
+}
+
+model SpaceSlugRedirect {
   id        Int      @id @default(autoincrement())
-  title     String
-  content   String
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  Int
+  oldSlug   String   @unique
+  spaceId   Int
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+model SpaceMember {
+  id       Int      @id @default(autoincrement())
+  spaceId  Int
+  space    Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId   Int
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
+  @@unique([spaceId, userId])
+}
+
+model SpaceInvitation {
+  id        Int                   @id @default(autoincrement())
+  spaceId   Int
+  space     Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  email     String
+  token     String                @unique
+  invitedBy Int
+  inviter   User                  @relation("SpaceInviter", fields: [invitedBy], references: [id], onDelete: Cascade)
+  status    SpaceInvitationStatus @default(PENDING)
+  createdAt DateTime              @default(now())
+  expiresAt DateTime?
+}
+
+model Content {
+  id            Int            @id @default(autoincrement())
+  title         String
+  slug          String
+  excerpt       String?
+  body          String
+  type          ContentType
+  status        ContentStatus  @default(DRAFT)
+  coverImage    String?
+  eventStart    DateTime?
+  eventEnd      DateTime?
+  eventLocation String?
+  authorId      Int
+  author        User           @relation(fields: [authorId], references: [id])
+  spaceId       Int?
+  space         Space?         @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  tags          TagOnContent[]
+  comments      Comment[]
+  likes         Like[]
+  publishedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([slug, type])
+}
+
+model Tag {
+  id       Int            @id @default(autoincrement())
+  name     String         @unique
+  slug     String         @unique
+  contents TagOnContent[]
+}
+
+model TagOnContent {
+  contentId Int
+  tagId     Int
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contentId, tagId])
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  body      String
+  contentId Int
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Like {
+  userId    Int
+  contentId Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, contentId])
+}
+
+model FieldDefinition {
+  id               Int                @id @default(autoincrement())
+  key              String             @unique
+  label            String
+  description      String?
+  type             FieldType
+  options          Json?
+  validation       Json?
+  entityType       String
+  applicableTypes  Json?
+  order            Int                @default(0)
+  isActive         Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  formFields       FormField[]
+  values           CustomFieldValue[]
+}
+
+model FormDefinition {
+  id          Int         @id @default(autoincrement())
+  name        String
+  slug        String      @unique
+  description String?
+  entityType  String
+  contentType ContentType?
+  spaceId     Int?
+  space       Space?      @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  fields      FormField[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model FormField {
+  id       Int             @id @default(autoincrement())
+  formId   Int
+  form     FormDefinition  @relation(fields: [formId], references: [id], onDelete: Cascade)
+  fieldId  Int
+  field    FieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  order    Int             @default(0)
+  required Boolean         @default(false)
+
+  @@unique([formId, fieldId])
+}
+
+model CustomFieldValue {
+  id         Int             @id @default(autoincrement())
+  fieldId    Int
+  field      FieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  entityType String
+  entityId   Int
+  value      Json
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@unique([fieldId, entityType, entityId])
+}
+
+model Banner {
+  id        Int       @id @default(autoincrement())
+  title     String
+  subtitle  String?
+  imageUrl  String?
+  linkUrl   String?
+  linkText  String?
+  isActive  Boolean   @default(true)
+  order     Int       @default(0)
+  placement String    @default("home")
+  spaceId   Int?
+  space     Space?    @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model SiteSetting {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value Json
+}
+
+model NavigationItem {
+  id       Int              @id @default(autoincrement())
+  label    String
+  href     String
+  order    Int              @default(0)
+  pageId   Int?             @unique
+  page     Page?            @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  parentId Int?
+  parent   NavigationItem?  @relation("NavChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children NavigationItem[] @relation("NavChildren")
+  isActive Boolean          @default(true)
+}
+
+model Page {
+  id              Int              @id @default(autoincrement())
+  title           String
+  slug            String           @unique
+  isHome          Boolean          @default(false)
+  published       Boolean          @default(false)
+  blocks          PageBlock[]
+  navigationItem  NavigationItem?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model PageBlock {
+  id     Int    @id @default(autoincrement())
+  pageId Int
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type   String
+  order  Int    @default(0)
+  config Json
+}
+
+model Conversation {
+  id           Int                       @id @default(autoincrement())
+  participants ConversationParticipant[]
+  messages     Message[]
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+}
+
+model ConversationParticipant {
+  conversationId Int
+  userId         Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime?
+
+  @@id([conversationId, userId])
+}
+
+model Message {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  authorId       Int
+  author         User         @relation(fields: [authorId], references: [id])
+  body           String
+  createdAt      DateTime     @default(now())
 }

@@ -1,26 +1,158 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf8ff;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --primary: #7c3aed;
+  --primary-hover: #6d28d9;
+  --primary-foreground: #ffffff;
+  --accent: #f97316;
+  --accent-soft: #fff7ed;
+  --muted: #f4f0ff;
+  --muted-foreground: #64748b;
+  --border: #e8e2f4;
+  --ring: #7c3aed;
+  --radius: 1rem;
+  --shadow-card: 0 2px 8px -2px rgb(124 58 237 / 0.08), 0 4px 16px -4px rgb(15 23 42 / 0.06);
+  --shadow-card-hover: 0 12px 32px -8px rgb(124 58 237 / 0.18), 0 8px 16px -8px rgb(15 23 42 / 0.08);
+  --shadow-glow: 0 0 40px -10px rgb(124 58 237 / 0.35);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0a0612;
+    --foreground: #f8fafc;
+    --card: #130d1f;
+    --card-foreground: #f8fafc;
+    --primary: #a78bfa;
+    --primary-hover: #c4b5fd;
+    --accent-soft: #1c1410;
+    --muted: #1a1228;
+    --muted-foreground: #94a3b8;
+    --border: #2a1f3d;
+    --shadow-card: 0 2px 8px -2px rgb(0 0 0 / 0.4);
+    --shadow-card-hover: 0 12px 32px -8px rgb(124 58 237 / 0.25);
+    --shadow-glow: 0 0 40px -10px rgb(167 139 250 / 0.3);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  border-color: var(--border);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+/* Vibrant mesh background */
+.site-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 90% 60% at 0% -10%, rgb(167 139 250 / 0.18), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgb(251 146 60 / 0.12), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgb(56 189 248 / 0.08), transparent 55%),
+    var(--background);
+}
+
+@media (prefers-color-scheme: dark) {
+  .site-shell {
+    background:
+      radial-gradient(ellipse 90% 60% at 0% -10%, rgb(124 58 237 / 0.22), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 100% 0%, rgb(249 115 22 / 0.1), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 50% 100%, rgb(14 165 233 / 0.08), transparent 55%),
+      var(--background);
+  }
+}
+
+/* Decorative blobs */
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* Glass panels */
+.glass-panel {
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in srgb, white 60%, var(--border));
+}
+
+/* Gradient text utility */
+.text-gradient {
+  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #f97316 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Admin shell */
+.admin-shell {
+  background: linear-gradient(135deg, #faf8ff 0%, #f4f0ff 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .admin-shell {
+    background: linear-gradient(135deg, #0a0612 0%, #130d1f 100%);
+  }
+}
+
+/* Prose for content */
+.prose-content {
+  line-height: 1.75;
+  color: var(--muted-foreground);
+}
+
+.prose-content strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+/* Card shine on hover */
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgb(255 255 255 / 0.12) 45%,
+    rgb(255 255 255 / 0.2) 50%,
+    rgb(255 255 255 / 0.12) 55%,
+    transparent 60%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+}
+
+.card-shine:hover::after {
+  transform: translateX(100%);
 }

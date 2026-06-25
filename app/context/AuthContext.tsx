@@ -1,32 +1,58 @@
 "use client";
 
-import { createContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useState, useEffect, ReactNode, useCallback } from "react";
+import type { Role } from "@prisma/client";
 
-type User = { email: string } | null;
+export type AuthUser = {
+  id: number;
+  email: string;
+  name: string;
+  role: Role;
+};
 
 type AuthContextType = {
-  user: User;
+  user: AuthUser | null;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
+  loading: true,
   login: async () => {},
-  logout: () => {},
+  logout: async () => {},
+  refresh: async () => {},
 });
 
-type Props = { children: ReactNode };
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export const AuthProvider = ({ children }: Props) => {
-  const [user, setUser] = useState<User>(null);
-
-  useEffect(() => {
-    // optional: fetch current user info from API on mount
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+      if (!res.ok) {
+        setUser(null);
+        return;
+      }
+      const data = await res.json();
+      setUser(data.user ?? null);
+    } catch {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
   const login = async (email: string, password: string) => {
-    const res = await fetch("/api/login", {
+    const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -39,17 +65,17 @@ export const AuthProvider = ({ children }: Props) => {
     }
 
     const data = await res.json();
-    setUser({ email }); // може да сетнеш и други данни от data
+    setUser(data.user);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
     setUser(null);
-    // тук може да добавиш fetch към /api/logout ако имаш такъв
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
